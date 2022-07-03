@@ -1,0 +1,12 @@
+d20dd54d22e0b03135dd05492c7bd941 *DESCRIPTION
+76d89563fa96d9787e1bb1d825cbcbfd *LICENSE
+556c973379b3b51b10ef193d99bebd58 *NAMESPACE
+c7f9bd847a3c43bf416de0e1eb1a8abf *R/alphastats.R
+f900336506123adcca895d3898f96295 *R/helpers.R
+5cd5a4c68617a239c665e01291916a61 *R/plot_alphashapes.R
+3b3f3c2698af8f1b54029e98d5ee57d4 *R/plot_curves.R
+2b17cd867c8b563a3ae018ba47acda1e *R/print.R
+05e828a7244425d79e24b9be610a5f9d *man/alphastats.Rd
+df0c86d323e970fd05c978277838e3a7 *man/plot_alpha_shape.Rd
+05e18c44986e5153390a7c8ac299774c *man/plot_curve.Rd
+da1d38b79f60f75030295ed228e083b9 *man/print.spatgeom.Rd
