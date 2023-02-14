@@ -70,11 +70,11 @@
 #' Y <- data.frame(Y = r * sin(theta))
 #' X <- data.frame(X1, X2)
 #'
-#' estimation <- alphastats(y = Y, x = X)
+#' estimation <- spatgeom(y = Y, x = X)
 #' @export
 
 
-alphastats <- function(x, y,
+spatgeom <- function(x, y,
                        scale = FALSE,
                        nalphas = 100,
                        envelope = FALSE,
@@ -83,7 +83,7 @@ alphastats <- function(x, y,
     message("Running with only x")
   } else {
     message("Running with x and y")
-    alphastats_xy(x, y,
+    spatgeom_xy(x, y,
       scale = scale,
       nalphas = nalphas,
       envelope = envelope,
@@ -94,7 +94,7 @@ alphastats <- function(x, y,
 
 
 
-alphastats_xy <- function(x, y,
+spatgeom_xy <- function(x, y,
                           scale = FALSE,
                           nalphas = 100,
                           envelope = FALSE,
@@ -178,7 +178,7 @@ alphastats_xy <- function(x, y,
 
 
 
-alphastats_x <- function(x, ...) {
+spatgeom_x <- function(x, ...) {
 
 }
 
