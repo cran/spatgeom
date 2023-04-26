@@ -35,7 +35,7 @@
 #' The \code{segments} column are the segments of each individual triangle and
 #' \code{max_length} is the maximum length of them.}
 #'
-#' \item{\strong{data_frame_triangles}}{a data frame with columns \code{alpha}
+#' \item{\strong{geom_indices}}{a data frame with columns \code{alpha}
 #'  and \code{geom_corr}. The \code{alpha} column is a numeric vector of size
 #'  \code{nalphas} from the minimum to the maximum distance between points
 #'  estimated in the data. The \code{geom_corr} column is the value \code{1 -
@@ -60,25 +60,25 @@
 #' https://doi.org/10.1007/s00180-022-01244-1
 #'
 #' @examples
-#' n <- 30
-#' a <- -1
-#' b <- 1
-#' theta <- runif(n, 0, 2 * pi)
-#' r <- (sqrt(runif(n))) * (0.5) + 0.5
-#' X1 <- r * cos(theta)
-#' X2 <- runif(n, a, b)
-#' Y <- data.frame(Y = r * sin(theta))
-#' X <- data.frame(X1, X2)
+#' xy <- donut_data(n = 30, a = -1, b = 1, theta = 2 * pi)
+#' estimation <- spatgeom(y = xy[, 1], x = xy[, -1])
 #'
-#' estimation <- spatgeom(y = Y, x = X)
+#' # If you want to estimate the envelope, you can use the envelope argument to
+#' # TRUE. This will take a while to run.
+#' \dontrun{
+#' estimation_with_envelope <- spatgeom(
+#'   y = xy[, 1], x = xy[, -1],
+#'   envelope = TRUE
+#' )
+#' }
 #' @export
 
 
 spatgeom <- function(x, y,
-                       scale = FALSE,
-                       nalphas = 100,
-                       envelope = FALSE,
-                       mc_cores = 1) {
+                     scale = FALSE,
+                     nalphas = 100,
+                     envelope = FALSE,
+                     mc_cores = 1) {
   if (missing(y)) {
     message("Running with only x")
   } else {
@@ -95,10 +95,10 @@ spatgeom <- function(x, y,
 
 
 spatgeom_xy <- function(x, y,
-                          scale = FALSE,
-                          nalphas = 100,
-                          envelope = FALSE,
-                          mc_cores = 2) {
+                        scale = FALSE,
+                        nalphas = 100,
+                        envelope = FALSE,
+                        mc_cores = 2) {
   x <- as.data.frame(x)
   y <- as.data.frame(y)
 
@@ -132,42 +132,14 @@ spatgeom_xy <- function(x, y,
 
 
   if (envelope == TRUE) {
-    for (i in seq_len(ncol(x))) {
-      message(paste0("Estimating envelope for variable = ", i))
-      envelope_data <-
-        data.frame(
-          y = numeric(),
-          x = numeric(),
-          nsim = numeric()
-        )
-
-      envelope_data <- parallel::mclapply(
-        mc.cores = mc_cores,
-        X = seq_len(40),
-        FUN = function(k) {
-          n <- stats::rpois(1, lambda = out_list[[i]]$mean_n)
-          x <- stats::runif(n, min = min(x[, i]), max = max(x[, i]))
-          y <- stats::runif(n, min = min(y[, 1]), max = max(y[, 1]))
-          enve <-
-            estimate_curves(
-              x1 = x,
-              x2 = y,
-              scale = scale,
-              nalphas = nalphas,
-              intensity = out_list[[i]]$intensity
-            )
-          enve_approx <-
-            stats::approx(
-              x = enve$data_frame_triangles$alpha,
-              y = enve$data_frame_triangles$geom_corr,
-              xout = out_list[[i]]$data_frame_triangles$alpha
-            )
-          data.frame(enve_approx, nsim = k)
-        }
-      )
-      envelope_data <- do.call("rbind", envelope_data)
-      out_list[[i]]$envelope_data <- envelope_data
-    }
+    out_list <- estimate_envelope(
+      triangles_list = out_list,
+      x = x,
+      y = y,
+      scale = scale,
+      nalphas = nalphas,
+      mc_cores = mc_cores
+    )
   }
 
   ans[["results"]] <- out_list
@@ -215,7 +187,6 @@ estimate_curves <- function(x1, x2, scale, nalphas, intensity = NULL) {
       max(sf::st_length(sf::st_cast(sf::st_sfc(x))))
     })
 
-  alpha <- NULL
   triangles <-
     sf::st_sf(
       list(
@@ -227,62 +198,86 @@ estimate_curves <- function(x1, x2, scale, nalphas, intensity = NULL) {
     )
   triangles <- triangles[order(triangles$alpha), ]
 
-  geom_corr <- geom_sens <- NULL
-  d_min <- min(triangles$alpha)
-  d_max <- max(triangles$alpha)
-  alpha_seq <- seq(d_min, d_max * 1.1, length.out = nalphas)
+  geom_corr <- NULL
 
   out <- lapply(
-    X = alpha_seq,
-    FUN = function(s) {
-      alpha_shape <- subset(triangles, alpha <= s)
+    X = seq_along(triangles$alpha),
+    FUN = function(k) {
+      alpha_shape <- triangles[1:k, ]
+
       if (nrow(alpha_shape) > 0) {
         poly_union <- sf::st_union(alpha_shape$geometry)
-        poly_reflection <- estimate_symmetric_reflection(poly_union)
 
         ## Geometric R2 index
         geom_corr <-
           1 - sf::st_area(poly_union) / sf::st_area(bb)
-        ###############################################################
-        ## TODO The geom sensitivity part needs work, in particular the
-        ## interpretation of the results
-        ###############################################################
-        poly_sym_difference <-
-          sf::st_sym_difference(poly_union, poly_reflection)
-        geom_sens <-
-          sf::st_area(poly_sym_difference) / (2 * sf::st_area(poly_union))
-        ## poly_sym_difference_bb <-
-        ##   sf::st_sym_difference(bb, poly_sym_difference)
-        ## geom_sens2 <- sf::st_area(poly_sym_difference_bb) /
-        ## sf::st_area(bb)
-        ###############################################################
       } else {
         geom_corr <- 1
-        geom_sens <- 1
       }
-      return(list(geom_corr = geom_corr, geom_sens = geom_sens))
+      return(list(geom_corr = geom_corr))
     }
   )
 
   geom_corr <- sapply(out, function(x) {
     x$geom_corr
   })
-  geom_sens <- sapply(out, function(x) {
-    x$geom_sens
-  })
 
-  data_frame_triangles <- data.frame(
-    alpha = alpha_seq,
-    geom_corr,
-    geom_sens
+  geom_indices <- data.frame(
+    alpha = triangles$alpha,
+    geom_corr = geom_corr
   )
 
   return(
     list(
       triangles = triangles,
-      data_frame_triangles = data_frame_triangles,
+      geom_indices = geom_indices,
       intensity = intensity,
       mean_n = sf::st_area(bb) * intensity
     )
   )
+}
+
+estimate_envelope <- function(triangles_list,
+                              x,
+                              y,
+                              scale,
+                              nalphas,
+                              mc_cores = 2) {
+  for (i in seq_len(ncol(x))) {
+    message(paste0("Estimating envelope for variable = ", i))
+    envelope_data <-
+      data.frame(
+        y = numeric(),
+        x = numeric(),
+        nsim = numeric()
+      )
+
+    envelope_data <- parallel::mclapply(
+      mc.cores = mc_cores,
+      X = seq_len(40),
+      FUN = function(k) {
+        n <- stats::rpois(1, lambda = triangles_list[[i]]$mean_n)
+        x <- stats::runif(n, min = min(x[, i]), max = max(x[, i]))
+        y <- stats::runif(n, min = min(y[, 1]), max = max(y[, 1]))
+        enve <-
+          estimate_curves(
+            x1 = x,
+            x2 = y,
+            scale = scale,
+            nalphas = nalphas,
+            intensity = triangles_list[[i]]$intensity
+          )
+        enve_approx <-
+          stats::approx(
+            x = enve$geom_indices$alpha,
+            y = enve$geom_indices$geom_corr,
+            xout = triangles_list[[i]]$geom_indices$alpha
+          )
+        data.frame(enve_approx, nsim = k)
+      }
+    )
+    envelope_data <- do.call("rbind", envelope_data)
+    triangles_list[[i]]$envelope_data <- envelope_data
+  }
+  return(triangles_list)
 }

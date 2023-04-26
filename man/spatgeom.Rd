@@ -44,7 +44,7 @@ Delanauy triangulation for the corresponding column of \code{x} and \code{y}.
 The \code{segments} column are the segments of each individual triangle and
 \code{max_length} is the maximum length of them.}
 
-\item{\strong{data_frame_triangles}}{a data frame with columns \code{alpha}
+\item{\strong{geom_indices}}{a data frame with columns \code{alpha}
 and \code{geom_corr}. The \code{alpha} column is a numeric vector of size
 \code{nalphas} from the minimum to the maximum distance between points
 estimated in the data. The \code{geom_corr} column is the value \code{1 -
@@ -67,17 +67,17 @@ Function to estimate the geometric correlation between
 variables.
 }
 \examples{
-n <- 30
-a <- -1
-b <- 1
-theta <- runif(n, 0, 2 * pi)
-r <- (sqrt(runif(n))) * (0.5) + 0.5
-X1 <- r * cos(theta)
-X2 <- runif(n, a, b)
-Y <- data.frame(Y = r * sin(theta))
-X <- data.frame(X1, X2)
+xy <- donut_data(n = 30, a = -1, b = 1, theta = 2 * pi)
+estimation <- spatgeom(y = xy[, 1], x = xy[, -1])
 
-estimation <- spatgeom(y = Y, x = X)
+# If you want to estimate the envelope, you can use the envelope argument to
+# TRUE. This will take a while to run.
+\dontrun{
+estimation_with_envelope <- spatgeom(
+  y = xy[, 1], x = xy[, -1],
+  envelope = TRUE
+)
+}
 }
 \references{
 Hernández, A.J., Solís, M. Geometric goodness of fit measure to detect

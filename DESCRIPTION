@@ -1,7 +1,7 @@
 Package: spatgeom
 Type: Package
 Title: Geometric Spatial Point Analysis
-Version: 0.2.0
+Version: 0.3.0
 Authors@R: c(
           person(given = "Maikol",
                  family = "Solís",
@@ -23,13 +23,13 @@ URL: https://github.com/maikol-solis/spatgeom
 BugReports: https://github.com/maikol-solis/spatgeom/issues
 Encoding: UTF-8
 Imports: ggplot2, scales, sf, dplyr, lwgeom, cowplot, purrr
-RoxygenNote: 7.2.2
+RoxygenNote: 7.2.3
 Depends: R (>= 3.6.0)
 Suggests: rmarkdown, knitr, testthat (>= 2.1.0)
 NeedsCompilation: no
-Packaged: 2023-02-14 18:46:39 UTC; maikol
+Packaged: 2023-04-26 19:14:54 UTC; maikol
 Author: Maikol Solís [aut, cre],
   Alberto Hernández [ctb],
   Carlos Pasquier [ctb]
 Repository: CRAN
-Date/Publication: 2023-02-14 19:00:02 UTC
+Date/Publication: 2023-04-26 19:30:02 UTC

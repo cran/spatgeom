@@ -22,17 +22,10 @@ Print the estimate given by \code{\link{spatgeom}}.
 Print method for objects of class \code{spatgeom}.
 }
 \examples{
-n <- 30
-a <- -1
-b <- 1
-theta <- runif(n, 0, 2 * pi)
-r <- (sqrt(runif(n))) * (0.5) + 0.5
-X1 <- r * cos(theta)
-X2 <- runif(n, a, b)
-Y <- data.frame(Y = r * sin(theta))
-X <- data.frame(X1, X2)
 
-estimation <- spatgeom(y = Y, x = X)
+xy <- donut_data(n = 30, a = -1, b = 1, theta = 2 * pi)
+
+estimation <- spatgeom(y = xy[, 1], x = xy[, -1])
 
 print(estimation)
 

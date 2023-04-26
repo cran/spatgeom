@@ -19,21 +19,15 @@
 #'   panel.
 #'
 #' @examples
-#' n <- 30
-#' a <- -1
-#' b <- 1
-#' theta <- runif(n, 0, 2 * pi)
-#' r <- (sqrt(runif(n))) * (0.5) + 0.5
-#' X1 <- r * cos(theta)
-#' X2 <- runif(n, a, b)
-#' Y <- data.frame(Y = r * sin(theta))
-#' X <- data.frame(X1, X2)
 #'
-#' estimation <- spatgeom(y = Y, x = X)
+#' xy <- donut_data(n = 30, a = -1, b = 1, theta = 2 * pi)
+#'
+#' estimation <- spatgeom(y = xy[, 1], x = xy[, -1])
 #'
 #' plot_curve(estimation, type = "curve")
 #'
 #' plot_curve(estimation, type = "deriv")
+#'
 #' @export
 
 plot_curve <-
@@ -44,32 +38,66 @@ plot_curve <-
     nvar <- length(x$results)
 
     # variables bindings for R CMD check
-    df <- df_fp <- alpha <- geom_corr <- variable <- y <- nsim <- NULL
+    df <- df_fp <- alpha <- geom_corr <- variable <- y <- ymin <- ymax <- NULL
 
     for (k in 1:nvar) {
       df <- rbind(
         cbind(
-          x$results[[k]]$data_frame_triangles,
+          x$results[[k]]$geom_indices,
           variable = colnames(x$x)[k],
           intensity = x$results[[k]]$intensity
         ),
         df
       )
 
+      x_curve <- x$results[[k]]$geom_indices$alpha
+      y_curve <- x$results[[k]]$geom_indices$geom_corr
+
+      suppressWarnings(
+        curve_regularized <- stats::approx(
+          x_curve,
+          y_curve,
+          n = length(x_curve),
+        )
+      )
+
+      dx <- diff(curve_regularized$x)
+      dy <- diff(curve_regularized$y)
 
       df_fp <- rbind(data.frame(
-        x = x$results[[k]]$data_frame_triangles$alpha[-1],
-        y = diff(x$results[[k]]$data_frame_triangles$geom_corr) /
-          diff(x$results[[k]]$data_frame_triangles$alpha),
+        x = curve_regularized$x[-length(curve_regularized$x)],
+        y = dy / dx,
         variable = colnames(x$x)[k]
       ), df_fp)
     }
 
     if (type == "curve") {
-      plt <- ggplot2::ggplot(df) +
-        ggplot2::geom_step(ggplot2::aes(x = alpha, y = geom_corr),
-          size = 1
+      plt <- ggplot2::ggplot(df)
+
+      if (!is.null(x$results[[k]]$envelope_data)) {
+        envelope_ribbon <- x$results[[k]]$envelope_data
+        envelope_ribbon <- dplyr::group_by(.data = envelope_ribbon, x)
+        envelope_ribbon <- dplyr::summarise(
+          .data = envelope_ribbon,
+          ymin = min(y, na.rm = TRUE), ymax = max(y, na.rm = TRUE)
         )
+        envelope_ribbon <- dplyr::filter(
+          .data = envelope_ribbon,
+          is.finite(ymin) & is.finite(ymax)
+        )
+
+        plt <- plt +
+          ggplot2::geom_ribbon(
+            data = envelope_ribbon,
+            ggplot2::aes(x = x, ymin = ymin, ymax = ymax),
+            alpha = 0.7, fill = "grey"
+          )
+      }
+
+
+      plt <- plt + ggplot2::geom_step(ggplot2::aes(x = alpha, y = geom_corr),
+        linewidth = 1
+      )
 
       for (k in 1:nvar) {
         plt <- plt +
@@ -80,16 +108,9 @@ plot_curve <-
             },
             args = list(intensity = x$results[[k]]$intensity),
             linetype = "dashed",
-            color = "red", size = 1
+            color = "red",
+            linewidth = 1
           )
-
-        if (!is.null(x$results[[k]]$envelope_data)) {
-          plt <- plt +
-            ggplot2::geom_line(
-              data = x$results[[k]]$envelope_data,
-              mapping = ggplot2::aes(x, y, group = nsim), color = "lightgrey"
-            )
-        }
       }
 
 
@@ -105,8 +126,14 @@ plot_curve <-
         cowplot::background_grid(minor = "y") +
         cowplot::panel_border()
     } else if (type == "deriv") {
-      plt <- ggplot2::ggplot(df) +
-        ggplot2::geom_line(data = df_fp, ggplot2::aes(x, y), size = 1) +
+      plt <- ggplot2::ggplot(data = df_fp, ggplot2::aes(x, y)) +
+        ggplot2::geom_point(color = "grey", alpha = 0.7) +
+        ggplot2::geom_smooth(
+          linewidth = 1,
+          se = FALSE,
+          method = "gam",
+          formula = y ~ s(x, bs = "cs")
+        ) +
         ggplot2::scale_y_continuous(name = expression(f * minute(alpha))) +
         ggplot2::scale_x_continuous(
           name = expression(alpha),
